@@ -3,6 +3,7 @@ from tensorflow import keras
 import skimage.io as sk
 from skimage.filters import gaussian
 from skimage.util import img_as_float
+from skimage.transform import rescale, resize
 import sys
 import os
 import time
@@ -34,120 +35,65 @@ def download_dataset_to_dir():
 def save_model_to_dir():
     pass
     
+
 # ======================================================= #
-# ================ DATA LOADING FUNCTIONS =============== #
+# =============== DATA LOADING FUNCTIONS ================ #
 # ======================================================= #
 
+def load_dataset_filepaths(im_dir, h_dir):
+    """
 
+    Parameters
+    ----------
+    im_dir : TYPE
+        DESCRIPTION.
+    h_dir : TYPE
+        DESCRIPTION.
 
-def load_partition(filepath = None):
+    Returns
+    -------
+    train_im_filepaths : TYPE
+        DESCRIPTION.
+    TYPE
+        DESCRIPTION.
+    tuple
+        DESCRIPTION.
 
-    # To use global variable if no filepath is given
-    if filepath == None:
-        filepath = PARTITION_FILEPATH
-        
-    # Open file and read all lines
-    f = open(filepath, 'r')
-    Lines = f.readlines()
+    """
     
-    # list for data (ex : test_aligned_0001), and its label (0-6)
-    data = list()
-    label = list()
+    # 
+    filenames, y = load_partition()
     
-    for line in Lines:
-        
-        
-        
-        # x and y coordinates of landmarks
-        x, y = line.split()
-        
-        # Remove file extension and append to list
-        x = x.replace('.jpg','')
-        
-        data.append(x)
-        label.append(y)
-        
-    return data, label
-
-
-def load_heatmap(dataname, im_h, im_w, sigma, dirname = None):
+    img_train_filepaths = list()
+    img_test_filepaths = list()
+    heatmap_train_filepaths = list()
     
-    if dirname == None:
-        dirname = LANDMARKS_DIRPATH
-        
-    filename = dataname + '_aligned.txt'
-    filename = dirname + '/' + filename
+    # from load_partition we get list of y labels, and filenames of x
+    filenames_x, y = load_partition()
+    y_train, y_test = y
     
+    # image filepaths
+    train_im_filepaths = list()
+    test_im_filepaths = list()
     
-    # Open file and read all lines
-    f = open(filename, 'r')
-    Lines = f.readlines()
+    # heatmap filepaths
+    train_h_filepaths = list()
+    test_h_filepaths = list()
     
-    # List of heatmaps for each landmark
-    heatmap = np.zeros((im_h,im_w), dtype = np.float)
-    
-    for line in Lines:
+    for filename in filenames:
         
-        # x and y coordinates of landmarks
-        x, y = line.split()
-        x = int(x)
-        y = int(y)
-        
-        # Landmark coordinates is set to 1, everything else is 0
-        heatmap[x,y] = 1
-        
-        
-        
-    f.close()
-
-    heatmap = gaussian(heatmap, sigma)
-    
-    return heatmap
-
-def load_all_landmark(dirname, im_h, im_w):
-    
-    # list that will hold trainset / testset heatmaps
-    train_hm = list()
-    test_hm = list()
-    
-    for filename in os.listdir(dirname):
-
-        f = os.path.join(dirname, filename)
-        heatmap = load_landmarks_file(f, im_h, im_w, 3)
-        
-        # filename's second letter is r -> train heatmap
+        # testing second letter of string by checking if t(r)ain not t(e)st
         if filename[1] == 'r':
-            train_hm.append(heatmap)
             
-        else :
-            test_hm.append(heatmap)
+            train_im_filepaths.append(im_dir + filename + '_aligned.jpg')
+            train_h_filepaths.append(h_dir + filename + '_aligned.txt')
+            
+        else:
+            test_im_filepaths.append(im_dir + filename + '_aligned.jpg')
+            test_h_filepaths.append(h_dir + filename + '_aligned.txt')
+            
+    return (train_im_filepaths, test_im_filepaths), (train_h_filepaths, test_h_filepaths),(y_train, y_test)
     
-    return np.array(train_hm), np.array(test_hm)
-
-def load_img(filename):
-    pass
-
-def load_imgs():
-    pass
-
-def load_label():
-    pass
-
-def load_labels():
-    pass
-
-def load_data():
-    pass
-    # return (train_imgs, train_labels), (test_imgs, test_labels)
-
-# ======================================================= #
-# =============== DATA PROCESSING FUNCTIONS ============= #
-# ======================================================= #
-
-def img_resize(img, width, height):
-    pass
-
-
 def load_partition(filepath = None):
 
 
@@ -159,8 +105,8 @@ def load_partition(filepath = None):
     f = open(filepath, 'r')
     Lines = f.readlines()
     
-    # list for data (ex : test_aligned_0001), and its label (0-6)
-    data = list()
+    # list for filenames (ex : test_aligned_0001), and its label (0-6)
+    filenames = list()
     train_label = list()
     test_label = list()
     for line in Lines:
@@ -178,16 +124,16 @@ def load_partition(filepath = None):
         # Remove file extension and append to list
         x = x.replace('.jpg','')
         
-        data.append(x)
+        filenames.append(x)
         
     f.close()
         
-    return data, (np.array(train_label), np.array(test_label))
+    return filenames, (train_label, test_label)
 
-def load_heatmap(filename, im_h, im_w, sigma = 3):
+def load_heatmap(filepath, im_h = 112, im_w = 112, sigma = 3):
 
     # Open file and read all lines
-    f = open(filename, 'r')
+    f = open(filepath, 'r')
     Lines = f.readlines()
     
     # List of heatmaps for each landmark
@@ -231,9 +177,10 @@ def load_all_heatmaps(dirname, filenames, im_h, im_w, sigma = 3):
     
     return np.array(train_hm), np.array(test_hm)
 
-def load_img(filename):
+def load_img(filepath):
     
-    img = sk.imread(filename)
+    img = sk.imread(filepath)
+    img = img.astype(np.float32)/255
     return img
 
 def load_all_imgs(dirname, filenames):
@@ -256,33 +203,48 @@ def load_all_imgs(dirname, filenames):
     
     return np.array(train_img), np.array(test_img)
 
-
 def load_data():
     pass
     # return (train_imgs, train_labels), (test_imgs, test_labels)
 
-# ======================================================= #
-# =============== DATA PROCESSING FUNCTIONS ============= #
-# ======================================================= #
-
-def img_resize(img, width, height):
-    pass
-
-def create_augmented_img():
-    pass
 
 
-def process_imgs(imgs):
-    # img_resize(img, width, height)
-    pass
+# ======================= BATCH ========================= #
+
+
+def load_batch(dataset_filepaths, ind_start, ind_end, train = True):
     
-
-def process_prior_heatmaps(imgs):
-    pass
-
-
-
+    # Unpack filepaths of images, heatmaps, and labels
+    imgs, heatmaps, y = dataset_filepaths
     
+    # Initialize batch lists
+    imgs_batch = list()
+    h_batch = list()
+    
+    # ind_of_set = 0 if we want to load a batch from training set, 1 otherwise
+    if train:
+        ind_of_set = 0
+    else:
+        ind_of_set = 1
+
+    # Create sublists of batches
+    y_batch = y[ind_of_set][ind_start:ind_end]
+    imgs, heatmaps = imgs[ind_of_set][ind_start:ind_end], heatmaps[ind_of_set][ind_start:ind_end]
+    
+    # Iterate over batches to create images / heatmaps from their filepaths
+    for (im, h) in zip(imgs,heatmaps):
+        imgs_batch.append(load_img(im))
+        h_batch.append(load_heatmap(h))
+        
+    # Change lists to ndarray
+    imgs_batch = np.array(imgs_batch)
+    h_batch = np.array(h_batch)
+    y_batch = np.array(y_batch, np.float32)
+    
+    x_batch = (imgs_batch, h_batch)
+
+    return x_batch, y_batch
+
 if __name__ == '__main__':
     
     
@@ -291,27 +253,6 @@ if __name__ == '__main__':
 
     filename = '../data/RAFDB/raw/landmarks/test_0006_aligned.txt'
     dirname = '../data/RAFDB/raw/landmarks'
-    
-    
-    # ====================================================== #
-    # start time
-    start = time.time()
-    
-    for i in range(12000):
-        im = load_heatmap('test_0006', 112, 112, 3)
-    # train_hm, test_hm = load_all_landmark_files(dirname, 112, 112)
-    
-    # end time
-    end = time.time()
-    
-    elapsed = end - start
-    print(elapsed)
-    
-    sk.imshow(im)
-    # print(train_hm.shape, test_hm.shape)
-
-    # filename = '../data/RAFDB/raw/landmarks/test_0006_aligned.txt'
-    # dirname = '../data/RAFDB/raw/landmarks'
     
     
     # ====================================================== #
@@ -332,74 +273,59 @@ if __name__ == '__main__':
     # # print(train_hm.shape, test_hm.shape)
 
     # ====================================================== #
-
+    
     # # start time
     # start = time.time()
     
-    # x, y = load_partition()
-    # heatmaps = list()
+    # data, y = load_partition()
+    # train_y, test_y = y
+    # train_y = keras.utils.to_categorical(train_y)
+    # test_y = keras.utils.to_categorical(test_y)
     
-    # for l in x:
-    #     heatmap = load_landmarks(l, 112, 112, 3)
-    #     heatmaps.append(heatmap)
+    
+    
+    # img_filenames = list()
+    # heatmap_filenames = list()
+    
+    # for dataname in data:
+    #     img_filenames.append(dataname + '_aligned.jpg')
+    #     heatmap_filenames.append(dataname + '_aligned.txt')
         
-    # # end time
-    # end = time.time()
-
+    # print('after filenames', time.time() - start)
     
-    # elapsed = end - start
-    # print(elapsed)
-
-    
-    # elapsed = end - start
-    # print(elapsed)
-    
-    # ====================================================== #
-    
-    # start time
-    start = time.time()
-    
-    data, y = load_partition()
-    train_y, test_y = y
-    train_y = keras.utils.to_categorical(train_y)
-    test_y = keras.utils.to_categorical(test_y)
-    
-    
-    
-    img_filenames = list()
-    heatmap_filenames = list()
-    
-    for dataname in data:
-        img_filenames.append(dataname + '_aligned.jpg')
-        heatmap_filenames.append(dataname + '_aligned.txt')
-        
-    print('after filenames', time.time() - start)
-    
-    img_dir = '../data/RAFDB/raw/Image/aligned/'
-    heatmap_dir = '../data/RAFDB/raw/landmarks/'
+    # img_dir = '../data/RAFDB/raw/Image/aligned/'
+    # heatmap_dir = '../data/RAFDB/raw/landmarks/'
       
 
-    train_h, test_h = load_all_heatmaps(heatmap_dir, heatmap_filenames, 112, 112)
-    print(time.time() - start)
+    # train_h, test_h = load_all_heatmaps(heatmap_dir, heatmap_filenames, 112, 112)
+    # print(time.time() - start)
     
-    train_x, test_x = load_all_imgs(img_dir, img_filenames)
+    # train_x, test_x = load_all_imgs(img_dir, img_filenames)
     
-    print(time.time() - start)
-    train_x = train_x.astype(np.float32)/255
-    test_x = train_x.astype(np.float32)/255
-    
-    
+    # print(time.time() - start)
+    # train_x = train_x.astype(np.float32)/255
+    # test_x = train_x.astype(np.float32)/255
     
     
-    # end time
-    end = time.time()
     
-    elapsed = end - start
-    print(elapsed)
+    
+    # # end time
+    # end = time.time()
+    
+    # elapsed = end - start
+    # print(elapsed)
     
     # ====================================================== #
     
     # filename = '../data/RAFDB/raw/Image/aligned/test_0006_aligned.jpg'
     # im = sk.imread(filename)
     # im = img_as_float(im)
+    
+    im_dir = '../data/RAFDB/raw/Image/aligned/'
+    h_dir = '../data/RAFDB/raw/landmarks/'
+    
+    dataset_filepaths = load_dataset_filepaths(im_dir, h_dir)
+    
+    x, y, h = dataset_filepaths
+    print(x[0][1])
 

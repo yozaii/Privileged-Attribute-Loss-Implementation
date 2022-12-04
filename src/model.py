@@ -56,42 +56,42 @@ class PALModel(keras.Model):
         # Unpack the data
         x, y = data
         
-
-        # heatmap = heatmap(x)
-    
-
         x, heatmaps = x
+        
+        # print("x:", x)
+        # print("Heatmaps:", heatmaps)
         
 
         with tf.GradientTape() as tape:
             
-            y_pred = self(x, training=True)  # Forward pass
+            # Forward pass
+            y_pred = self(x, training=True)
         
-
+            # Initialize PAL attribution
+            PAL_layer = self.layers[self.n_PAL_layer].output
+            attribution_loss = 0
             
-            # Compute the loss value
-            # (the loss function is configured in `compile()`)
+            # number of channels
+            channels = PAL_layer.shape[3]
+            
+            # width and height of attribution
+            width = PAL_layer.shape[1]
+            height = PAL_layer.shape[2]
+            
+            # resize heatmap with respect to attribution (its width and height)
+            h = resize(heatmaps, (width, height))
             
             # Get PAL loss of n_PAL_layer (attribution map of nth layer)
-            PAL_loss(self.layers[self.n_PAL_layer], prior_heatmap, channels)
-
-            # channel strategy
-            channels = x.shape[3]
-            
-            PAL_loss = 0
-            for heatmap in heatmaps:
-            
-                # Get PAL loss of n_PAL_layer (attribution map of nth layer)
-                PAL_loss += PAL_loss(self.layers[self.n_PAL_layer], heatmap, channels)
+            attribution_loss += PAL_loss(PAL_layer, h, channels)
 
             
             # Output loss (categorical cross entropy in our case)
             loss = self.compiled_loss(y, y_pred)
-            loss_total = PAL_loss + loss
+            loss_total = attribution_loss + loss
     
         # Compute gradients
         trainable_vars = self.trainable_variables
-        gradients = x*tape.gradient(loss, trainable_vars)
+        gradients = x*tape.gradient(loss_total, trainable_vars)
         # Update weights
         self.opt.apply_gradients(zip(gradients, trainable_vars))
         # Update metrics (includes the metric that tracks the loss)
@@ -100,22 +100,10 @@ class PALModel(keras.Model):
         return {m.name: m.result() for m in self.metrics}
     
 
-    def compile(self, loss ='categorical_crossentropy', optimizer = 'Adam'):
-        
-        self.optimizer = optimizer
-        self.loss = loss
-
-        pass
 
 
-
-    def compile(self, loss ='categorical_crossentropy', optimizer = 'adam'):
+    def compile(self, loss ='categorical_crossentropy', optimizer = 'adam', run_eagerly = True):
         
         super().compile()
         self.opt = optimizer
         self.l = loss
-        print('TEST')
-        
-    def custom_train(batch_size, epochs):
-        
-        self.fit()

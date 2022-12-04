@@ -7,12 +7,16 @@ Created on Sat Dec  3 17:09:15 2022
 
 from model import *
 
-dataset_x = tf.data.Dataset.from_tensor_slices((train_x, train_h))
-dataset_y = tf.data.Dataset.from_tensor_slices(train_y)
-train_data = tf.data.Dataset.zip((dataset_x, dataset_y)).batch(16).repeat()
 
-sys.path.append('../')
-VGG16_WEIGHTS_PATH = '../pretrained_models/rcmalli_vggface_tf_notop_vgg16.h5'
+# tf.config.run_functions_eagerly(True)
+
+# print(tf.executing_eagerly())
+
+# dataset_x = tf.data.Dataset.from_tensor_slices((train_x, train_h))
+# dataset_y = tf.data.Dataset.from_tensor_slices(train_y)
+# train_data = tf.data.Dataset.zip((dataset_x, dataset_y)).batch(16)
+
+
 
 # ============================================================= #
 
@@ -26,11 +30,21 @@ VGG16_WEIGHTS_PATH = '../pretrained_models/rcmalli_vggface_tf_notop_vgg16.h5'
 
 # ============================================================= #
 
+# tf.config.run_functions_eagerly(True)
+sys.path.append('../')
+VGG16_WEIGHTS_PATH = '../pretrained_models/rcmalli_vggface_tf_notop_vgg16.h5'
+
+im_dir = '../data/RAFDB/raw/Image/aligned/'
+h_dir = '../data/RAFDB/raw/landmarks/'
+
+dataset_filepaths = load_dataset_filepaths(im_dir, h_dir)
+
+
 m = PALModel(weights_path = VGG16_WEIGHTS_PATH)     
 
 opt = keras.optimizers.Adam(learning_rate = 0.0005)
 loss_v = keras.losses.CategoricalCrossentropy()
 m.compile(loss = loss_v, optimizer=opt)
 
-m.fit(train_data, epochs = 1, steps_per_epoch=4)
+# custom_train(m, dataset_filepaths, epochs = 1)
 m.summary()
