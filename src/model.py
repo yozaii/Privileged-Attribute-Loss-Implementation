@@ -56,18 +56,34 @@ class PALModel(keras.Model):
         # Unpack the data
         x, y = data
         
+
         # heatmap = heatmap(x)
     
+
+        x, heatmaps = x
+        
+
         with tf.GradientTape() as tape:
             
             y_pred = self(x, training=True)  # Forward pass
         
+
             
             # Compute the loss value
             # (the loss function is configured in `compile()`)
             
             # Get PAL loss of n_PAL_layer (attribution map of nth layer)
             PAL_loss(self.layers[self.n_PAL_layer], prior_heatmap, channels)
+
+            # channel strategy
+            channels = x.shape[3]
+            
+            PAL_loss = 0
+            for heatmap in heatmaps:
+            
+                # Get PAL loss of n_PAL_layer (attribution map of nth layer)
+                PAL_loss += PAL_loss(self.layers[self.n_PAL_layer], heatmap, channels)
+
             
             # Output loss (categorical cross entropy in our case)
             loss = self.compiled_loss(y, y_pred)
@@ -83,6 +99,7 @@ class PALModel(keras.Model):
         # Return a dict mapping metric names to current value
         return {m.name: m.result() for m in self.metrics}
     
+
     def compile(self, loss ='categorical_crossentropy', optimizer = 'Adam'):
         
         self.optimizer = optimizer
@@ -91,3 +108,14 @@ class PALModel(keras.Model):
         pass
 
 
+
+    def compile(self, loss ='categorical_crossentropy', optimizer = 'adam'):
+        
+        super().compile()
+        self.opt = optimizer
+        self.l = loss
+        print('TEST')
+        
+    def custom_train(batch_size, epochs):
+        
+        self.fit()
