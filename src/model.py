@@ -82,7 +82,7 @@ class PALModel(keras.Model):
             h = resize(heatmaps, (width, height))
             
             # Get PAL loss of n_PAL_layer (attribution map of nth layer)
-            attribution_loss += PAL_loss(PAL_layer, h, channels)
+            attribution_loss = PAL_loss(PAL_layer, h, channels)
 
             
             # Output loss (categorical cross entropy in our case)
