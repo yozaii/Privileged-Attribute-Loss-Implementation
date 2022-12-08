@@ -5,7 +5,7 @@ from keras.layers import Layer, Conv2D, MaxPool2D, Flatten, Dense
 from data_utils import *
 
 
-def PAL_loss(attribution, prior_heatmap, channels):
+def calc_PAL(attribution, prior_heatmaps, channels):
     """
     Privileged attribution loss
     Parameters
@@ -23,27 +23,38 @@ def PAL_loss(attribution, prior_heatmap, channels):
 
     """
     
+    # width and height of attribution
+    width = PAL_layer.shape[1]
+    height = PAL_layer.shape[2]  
+    
     # resize prior_heatamp to match size of attribution layer
-    # prior_heatmap = img_resize(prior_heatmap, attribution[0], attribution[1])
+    prior_heatmaps = tf.image.resize(prior_heatmaps, attribution[0], attribution[1])
     
     # Total privileged attribution loss
-    total_PAL = 0
+    total_PAL = 0    
     
-    for c in range(channels):
+    
+    for i in range(prior_heatmaps.shape[0]):
         
-        att_c = attribution[:,:,c] # attributin of one channel
+        # resize prior_heatamp to match size of attribution layer
+        prior_heatmap = tf.image.resize(prior_heatmap, attribution[0], attribution[1])
         
-        # cross correlation parameters
-        mu = np.sum(att_c)
-        sigma_sq = np.sum((att_c - mu) *(att_c-mu))
-        sigma = np.sqrt(sigma_sq)
         
-        # Priveleged attribution loss formula for a channel c
-        conv = np.convolve((att_c - mu)/sigma, prior_heatmap)
-        pal = -np.sum(conv)
-        total_PAL += pal
-        
-    return total_PAL
+        for c in range(channels):
+            
+            att_c = attribution[:,:,:,c] # attribution of one channel
+            
+            # cross correlation parameters
+            mu = np.sum(att_c)
+            sigma_sq = np.sum((att_c - mu) *(att_c-mu))
+            sigma = np.sqrt(sigma_sq)
+            
+            # Priveleged attribution loss formula for a channel c
+            conv = np.convolve((att_c - mu)/sigma, prior_heatmap)
+            pal = -np.sum(conv)
+            total_PAL += pal
+            
+        return total_PAL
     
 def custom_train(model, dataset, epochs, batch_size = 16):
 
@@ -63,9 +74,9 @@ def custom_train(model, dataset, epochs, batch_size = 16):
             # during the forward pass, which enables auto-differentiation.
             with tf.GradientTape() as tape:
     
-               # Forward pass
+               # Forward pass and output vector sum
                y_pred = model(x, training=True)
-           
+
                # Initialize PAL attribution
                PAL_layer = model.layers[model.n_PAL_layer].output
                attribution_loss = 0

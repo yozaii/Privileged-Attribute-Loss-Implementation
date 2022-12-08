@@ -1,4 +1,5 @@
 import numpy as np
+import tensorflow as tf
 from tensorflow import keras
 import skimage.io as sk
 from skimage.filters import gaussian
@@ -94,6 +95,22 @@ def load_dataset_filepaths(im_dir, h_dir):
             
     return (train_im_filepaths, test_im_filepaths), (train_h_filepaths, test_h_filepaths),(y_train, y_test)
     
+def load_keras_dataset_filepaths(im_dir, h_dir):
+
+    
+    dataset_filepaths = load_dataset_filepaths(im_dir, h_dir)
+
+    x, h , y = dataset_filepaths
+    x_train, x_test = x
+    h_train, h_test = h
+    y_train, y_test = y
+
+    # Load training dataset
+    dataset_train = tf.data.Dataset.from_tensor_slices((x_train, h_train, h_train))
+    dataset_test = tf.data.Dataset.from_tensor_slices((x_test,h_test,y_test))
+    
+    return dataset_train, dataset_test
+
 def load_partition(filepath = None):
 
 
@@ -256,21 +273,22 @@ if __name__ == '__main__':
     
     
     # ====================================================== #
-    # # start time
-    # start = time.time()
-    
-    # for i in range(16000):
-    #     im = load_heatmap('../data/RAFDB/raw/landmarks/test_0006_aligned.txt', 112, 112, 3)
-    # # train_hm, test_hm = load_all_landmark_files(dirname, 112, 112)
-    
-    # # end time
-    # end = time.time()
-    
-    # elapsed = end - start
-    # print(elapsed)
-    
-    # sk.imshow(im)
-    # # print(train_hm.shape, test_hm.shape)
+   # # tf.config.run_functions_eagerly(True)
+   # sys.path.append('../')
+   # VGG16_WEIGHTS_PATH = '../pretrained_models/rcmalli_vggface_tf_notop_vgg16.h5'
+
+   # im_dir = '../data/RAFDB/raw/Image/aligned/'
+   # h_dir = '../data/RAFDB/raw/landmarks/'
+
+   # dataset_filepaths = load_dataset_filepaths(im_dir, h_dir)
+
+   # x, h , y = dataset_filepaths
+   # x_train, x_test = x
+   # h_train, h_test = h
+   # y_train, y_test = y
+
+   # # Load training dataset
+   # train_dataset = tf.data.Dataset.from_tensor_slices((x_train, h_train, h_train))
 
     # ====================================================== #
     

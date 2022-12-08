@@ -53,45 +53,47 @@ class PALModel(keras.Model):
     # https://keras.io/guides/customizing_what_happens_in_fit/
     def train_step(self, data):
 
+        # print(data)
+        
         # Unpack the data
-        x, y = data
+        x, h, y = data
         
-        x, heatmaps = x
+        print("x:", x)
+        print("h:", h)
+        print("y:", y)
         
-        # print("x:", x)
-        # print("Heatmaps:", heatmaps)
+        print(x[0])
+        
+        # # Separate x into two : x (images) and heatmaps
+        # x, heatmaps = x
         
 
         with tf.GradientTape() as tape:
             
-            # Forward pass
+            # Forward pass and output vector sum
             y_pred = self(x, training=True)
+            # f_o = keras.math.abs(self.layers[-1].output)
+            # f_o_sum = keras.math.reduce_sum(f_o)
+            
+            # B loss (categorical cross entropy in our case)
+            # loss_pred = self.compiled_loss(y, y_pred)
         
-            # Initialize PAL attribution
-            PAL_layer = self.layers[self.n_PAL_layer].output
-            attribution_loss = 0
-            
-            # number of channels
-            channels = PAL_layer.shape[3]
-            
-            # width and height of attribution
-            width = PAL_layer.shape[1]
-            height = PAL_layer.shape[2]
-            
-            # resize heatmap with respect to attribution (its width and height)
-            h = resize(heatmaps, (width, height))
-            
-            # Get PAL loss of n_PAL_layer (attribution map of nth layer)
-            attribution_loss = PAL_loss(PAL_layer, h, channels)
-
-            
-            # Output loss (categorical cross entropy in our case)
-            loss = self.compiled_loss(y, y_pred)
-            loss_total = attribution_loss + loss
+        # Initialize PAL attribution
+        PAL_layer = self.layers[self.n_PAL_layer].output
+        
+        # number of channels to use for PAL
+        channels = PAL_layer.shape[3]
     
-        # Compute gradients
-        trainable_vars = self.trainable_variables
-        gradients = x*tape.gradient(loss_total, trainable_vars)
+        # Compute gradients of attribution
+        attribution = x*tape.gradient(f_o_sum, self.trainable_variables)
+        
+        # Calculate Privilegd Attribution Loss and add it to total loss
+        PAL_loss = calc_PAL(attribution, heatmaps, channels) 
+        loss_total = loss_pred + PAL_loss
+        
+        # Back prop
+        gradients = tape.gradient(loss_total, self.trainable_variables)
+        
         # Update weights
         self.opt.apply_gradients(zip(gradients, trainable_vars))
         # Update metrics (includes the metric that tracks the loss)

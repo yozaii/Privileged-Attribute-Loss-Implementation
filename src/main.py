@@ -22,23 +22,22 @@ if __name__ == '__main__':
     
     # ============================================================= #
     
-    # 
+    # tf.config.run_functions_eagerly(True)
     sys.path.append('../')
+    sys.path.append('../data/RAFDB/raw/Image/aligned/')
     VGG16_WEIGHTS_PATH = '../pretrained_models/rcmalli_vggface_tf_notop_vgg16.h5'
-
-    # image / heatmap directories
+    
     im_dir = '../data/RAFDB/raw/Image/aligned/'
+    im_dir2 = 'data/RAFDB/raw/Image/aligned'
     h_dir = '../data/RAFDB/raw/landmarks/'
     
-    # load dataset filepaths
-    dataset_filepaths = load_dataset_filepaths(im_dir, h_dir)
+    dataset, dataset_test = load_keras_dataset_filepaths(im_dir, h_dir)
+    dataset = dataset.batch(16)
     
-    # create PAL_model
-    m = PALModel(weights_path = VGG16_WEIGHTS_PATH)    
+    m = PALModel(weights_path = VGG16_WEIGHTS_PATH)     
     
-    # Model loss / optimizers
     opt = keras.optimizers.Adam(learning_rate = 0.0005)
     loss_v = keras.losses.CategoricalCrossentropy()
     m.compile(loss = loss_v, optimizer=opt)
-
-    custom_train(m, dataset_filepaths, epochs = 1)
+    
+    m.fit(dataset_train)
