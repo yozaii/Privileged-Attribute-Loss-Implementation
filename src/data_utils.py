@@ -1,13 +1,17 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
+
 import skimage.io as sk
 from skimage.filters import gaussian
 from skimage.util import img_as_float
 from skimage.transform import rescale, resize
+
 import sys
 import os
 import time
+
+from datagenerator import *
 
 sys.path.append('../')
 
@@ -15,8 +19,8 @@ sys.path.append('../')
 
 # Directories
 
-ALIGNED_IMAGE_DIRPATH = ('../data/RAFDB/raw/Image/aligned')
-LANDMARKS_DIRPATH = ('../data/RAFDB/raw/landmarks')
+ALIGNED_IMAGE_DIRPATH = ('../data/RAFDB/raw/Image/aligned/')
+LANDMARKS_DIRPATH = ('../data/RAFDB/raw/landmarks/')
 
 # Files
 
@@ -93,23 +97,7 @@ def load_dataset_filepaths(im_dir, h_dir):
             test_im_filepaths.append(im_dir + filename + '_aligned.jpg')
             test_h_filepaths.append(h_dir + filename + '_aligned.txt')
             
-    return (train_im_filepaths, test_im_filepaths), (train_h_filepaths, test_h_filepaths),(y_train, y_test)
-    
-def load_keras_dataset_filepaths(im_dir, h_dir):
-
-    
-    dataset_filepaths = load_dataset_filepaths(im_dir, h_dir)
-
-    x, h , y = dataset_filepaths
-    x_train, x_test = x
-    h_train, h_test = h
-    y_train, y_test = y
-
-    # Load training dataset
-    dataset_train = tf.data.Dataset.from_tensor_slices((x_train, h_train, h_train))
-    dataset_test = tf.data.Dataset.from_tensor_slices((x_test,h_test,y_test))
-    
-    return dataset_train, dataset_test
+    return (train_im_filepaths, train_h_filepaths, y_train), (test_im_filepaths, test_h_filepaths, y_test)
 
 def load_partition(filepath = None):
 
@@ -123,7 +111,8 @@ def load_partition(filepath = None):
     Lines = f.readlines()
     
     # list for filenames (ex : test_aligned_0001), and its label (0-6)
-    filenames = list()
+    train_filenames = list()
+    test_filenames = list()
     train_label = list()
     test_label = list()
     for line in Lines:
@@ -131,21 +120,21 @@ def load_partition(filepath = None):
         # x and y coordinates of landmarks
         x, y = line.split()
         
+        # Remove filename extension
+        x = x.replace('.jpg','')
+        
         # testing second letter of string by checking if t(r)ain not t(e)st
         if line[1] == 'r':
             train_label.append(float(y))
+            train_filenames.append(x)
             
         else :
             test_label.append(y)
-        
-        # Remove file extension and append to list
-        x = x.replace('.jpg','')
-        
-        filenames.append(x)
+            test_filenames.append(x)
         
     f.close()
         
-    return filenames, (train_label, test_label)
+    return (train_filenames, train_label), (test_filenames, test_label)
 
 def load_heatmap(filepath, im_h = 112, im_w = 112, sigma = 3):
 
@@ -154,7 +143,7 @@ def load_heatmap(filepath, im_h = 112, im_w = 112, sigma = 3):
     Lines = f.readlines()
     
     # List of heatmaps for each landmark
-    heatmap = np.zeros((im_h,im_w), dtype = np.float32)
+    heatmap = np.zeros((im_h,im_w, 1), dtype = np.float32)
     
     for line in Lines:
         
@@ -174,93 +163,73 @@ def load_heatmap(filepath, im_h = 112, im_w = 112, sigma = 3):
     
     return heatmap
 
-def load_all_heatmaps(dirname, filenames, im_h, im_w, sigma = 3):
-    
-    # list that will hold trainset / testset heatmaps
-    train_hm = list()
-    test_hm = list()
-    
-    for filename in filenames:
-
-        f = dirname + filename
-        heatmap = load_heatmap(f, im_h, im_w, sigma)
-        
-        # filename's second letter is r -> train heatmap
-        if filename[1] == 'r':
-            train_hm.append(heatmap)
-            
-        else :
-            test_hm.append(heatmap)
-    
-    return np.array(train_hm), np.array(test_hm)
-
 def load_img(filepath):
     
     img = sk.imread(filepath)
     img = img.astype(np.float32)/255
     return img
 
-def load_all_imgs(dirname, filenames):
-    
-    # list that will hold trainset / testset heatmaps
-    train_img = list()
-    test_img = list()
-    
-    for filename in filenames:
+# ======================= CLASSES ======================== #
 
-        f = dirname + filename
-        img = load_img(f)
-        
-        # filename's second letter is r -> train img
-        if filename[1] == 'r':
-            train_img.append(img)
+# https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
+class DataGenerator(keras.utils.Sequence):
+    'Generates data for Keras'
+    def __init__(self, partition, batch_size=16, im_dim=(224,224,3), h_dim = (112,112,1),
+                 n_classes=7, shuffle=True):
+        'Initialization'
+        self.filepaths = partition[0]
+        self.label = partition[1]
+        self.batch_size = batch_size
+        self.im_dim = im_dim
+        self.h_dim = h_dim
+        self.n_classes = n_classes
+        self.shuffle = shuffle
+        self.on_epoch_end()
+
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return int(np.floor(len(self.filepaths) / self.batch_size))
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        # Generate indexes of the batch
+        indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
+
+        # Find list of IDs
+        list_filepaths_temp = [self.filepaths[k] for k in indexes]
+
+        # Generate data
+        x, h, y = self.__data_generation(list_filepaths_temp)
+
+        return x, h, y
+
+    def on_epoch_end(self):
+        'Updates indexes after each epoch'
+        self.indexes = np.arange(len(self.filepaths))
+        if self.shuffle == True:
+            np.random.shuffle(self.indexes)
+
+    def __data_generation(self, list_filepaths_temp):
+        'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
+        # Initialization
+        x = np.empty((self.batch_size, *self.im_dim))
+        h = np.empty((self.batch_size, *self.h_dim))
+        y = np.empty((self.batch_size), dtype=int)
+
+        # Generate data
+        for i, filepath in enumerate(list_filepaths_temp):
             
-        else :
-            test_img.append(img)
-    
-    return np.array(train_img), np.array(test_img)
+            # image
+            x[i] = load_img(ALIGNED_IMAGE_DIRPATH + filepath + '_aligned.jpg')
+            
+            # heatmap
+            h[i] = load_heatmap(LANDMARKS_DIRPATH + filepath + '_aligned.txt')
 
-def load_data():
-    pass
-    # return (train_imgs, train_labels), (test_imgs, test_labels)
+            # class label
+            y[i] = self.label[i]
 
+        return x, h, keras.utils.to_categorical(y, num_classes=self.n_classes)
 
-
-# ======================= BATCH ========================= #
-
-
-def load_batch(dataset_filepaths, ind_start, ind_end, train = True):
-    
-    # Unpack filepaths of images, heatmaps, and labels
-    imgs, heatmaps, y = dataset_filepaths
-    
-    # Initialize batch lists
-    imgs_batch = list()
-    h_batch = list()
-    
-    # ind_of_set = 0 if we want to load a batch from training set, 1 otherwise
-    if train:
-        ind_of_set = 0
-    else:
-        ind_of_set = 1
-
-    # Create sublists of batches
-    y_batch = y[ind_of_set][ind_start:ind_end]
-    imgs, heatmaps = imgs[ind_of_set][ind_start:ind_end], heatmaps[ind_of_set][ind_start:ind_end]
-    
-    # Iterate over batches to create images / heatmaps from their filepaths
-    for (im, h) in zip(imgs,heatmaps):
-        imgs_batch.append(load_img(im))
-        h_batch.append(load_heatmap(h))
-        
-    # Change lists to ndarray
-    imgs_batch = np.array(imgs_batch)
-    h_batch = np.array(h_batch)
-    y_batch = np.array(y_batch, np.float32)
-    
-    x_batch = (imgs_batch, h_batch)
-
-    return x_batch, y_batch
 
 if __name__ == '__main__':
     
@@ -347,3 +316,4 @@ if __name__ == '__main__':
     x, y, h = dataset_filepaths
     print(x[0][1])
 
+    
