@@ -58,53 +58,47 @@ class PALModel(keras.Model):
         # Unpack the data
         x, h, y = data
         
-        print("x:", x)
-        print("h:", h)
-        print("y:", y)
-        
-        print(x[0])
-        
         # # Separate x into two : x (images) and heatmaps
         # x, heatmaps = x
         
-
         with tf.GradientTape() as tape:
             
             # Forward pass and output vector sum
             y_pred = self(x, training=True)
             # f_o = keras.math.abs(self.layers[-1].output)
-            # f_o_sum = keras.math.reduce_sum(f_o)
             
-            # B loss (categorical cross entropy in our case)
-            # loss_pred = self.compiled_loss(y, y_pred)
+            # Backprop loss (categorical cross entropy in our case)
+            loss_pred = self.l(y, y_pred)
         
-        # Initialize PAL attribution
-        PAL_layer = self.layers[self.n_PAL_layer].output
+        # # Initialize PAL attribution
+        # PAL_layer = self.layers[self.n_PAL_layer].output
         
-        # number of channels to use for PAL
-        channels = PAL_layer.shape[3]
+        # # number of channels to use for PAL
+        # channels = PAL_layer.shape[3]
     
-        # Compute gradients of attribution
-        attribution = x*tape.gradient(f_o_sum, self.trainable_variables)
+        # # Compute gradients of attribution
+        # attribution = x*tape.gradient(f_o_sum, self.trainable_variables)
         
-        # Calculate Privilegd Attribution Loss and add it to total loss
-        PAL_loss = calc_PAL(attribution, heatmaps, channels) 
-        loss_total = loss_pred + PAL_loss
+        # # Calculate Privilegd Attribution Loss and add it to total loss
+        # PAL_loss = calc_PAL(attribution, heatmaps, channels)
+        loss_total = loss_pred # + PAL_loss
         
         # Back prop
         gradients = tape.gradient(loss_total, self.trainable_variables)
         
         # Update weights
-        self.opt.apply_gradients(zip(gradients, trainable_vars))
+        self.opt.apply_gradients(zip(gradients, self.trainable_variables))
         # Update metrics (includes the metric that tracks the loss)
         self.compiled_metrics.update_state(y, y_pred)
         # Return a dict mapping metric names to current value
+        
+        
         return {m.name: m.result() for m in self.metrics}
     
 
 
 
-    def compile(self, loss ='categorical_crossentropy', optimizer = 'adam', run_eagerly = True):
+    def compile(self, loss ='categorical_crossentropy', optimizer = 'adam'):
         
         super().compile()
         self.opt = optimizer

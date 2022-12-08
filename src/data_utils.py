@@ -11,8 +11,6 @@ import sys
 import os
 import time
 
-from datagenerator import *
-
 sys.path.append('../')
 
 # ================ GLOBAL VARS ================= #
@@ -42,62 +40,8 @@ def save_model_to_dir():
     
 
 # ======================================================= #
-# =============== DATA LOADING FUNCTIONS ================ #
+# ================ DATA LOADING UTILS =================== #
 # ======================================================= #
-
-def load_dataset_filepaths(im_dir, h_dir):
-    """
-
-    Parameters
-    ----------
-    im_dir : TYPE
-        DESCRIPTION.
-    h_dir : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    train_im_filepaths : TYPE
-        DESCRIPTION.
-    TYPE
-        DESCRIPTION.
-    tuple
-        DESCRIPTION.
-
-    """
-    
-    # 
-    filenames, y = load_partition()
-    
-    img_train_filepaths = list()
-    img_test_filepaths = list()
-    heatmap_train_filepaths = list()
-    
-    # from load_partition we get list of y labels, and filenames of x
-    filenames_x, y = load_partition()
-    y_train, y_test = y
-    
-    # image filepaths
-    train_im_filepaths = list()
-    test_im_filepaths = list()
-    
-    # heatmap filepaths
-    train_h_filepaths = list()
-    test_h_filepaths = list()
-    
-    for filename in filenames:
-        
-        # testing second letter of string by checking if t(r)ain not t(e)st
-        if filename[1] == 'r':
-            
-            train_im_filepaths.append(im_dir + filename + '_aligned.jpg')
-            train_h_filepaths.append(h_dir + filename + '_aligned.txt')
-            
-        else:
-            test_im_filepaths.append(im_dir + filename + '_aligned.jpg')
-            test_h_filepaths.append(h_dir + filename + '_aligned.txt')
-            
-    return (train_im_filepaths, train_h_filepaths, y_train), (test_im_filepaths, test_h_filepaths, y_test)
 
 def load_partition(filepath = None):
 
@@ -113,8 +57,8 @@ def load_partition(filepath = None):
     # list for filenames (ex : test_aligned_0001), and its label (0-6)
     train_filenames = list()
     test_filenames = list()
-    train_label = list()
-    test_label = list()
+    train_label = {}
+    test_label = {}
     for line in Lines:
         
         # x and y coordinates of landmarks
@@ -125,11 +69,11 @@ def load_partition(filepath = None):
         
         # testing second letter of string by checking if t(r)ain not t(e)st
         if line[1] == 'r':
-            train_label.append(float(y))
+            train_label[x] = float(y)
             train_filenames.append(x)
             
         else :
-            test_label.append(y)
+            test_label[x] = float(y)
             test_filenames.append(x)
         
     f.close()
@@ -226,7 +170,7 @@ class DataGenerator(keras.utils.Sequence):
             h[i] = load_heatmap(LANDMARKS_DIRPATH + filepath + '_aligned.txt')
 
             # class label
-            y[i] = self.label[i]
+            y[i] = self.label[filepath] - 1
 
         return x, h, keras.utils.to_categorical(y, num_classes=self.n_classes)
 

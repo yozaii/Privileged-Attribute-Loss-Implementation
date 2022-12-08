@@ -6,38 +6,34 @@ import skimage.io as sk
 
 if __name__ == '__main__':
     
-    
+    # Add root directory to path
     sys.path.append('../')
+    
+    # Load model weights
     VGG16_WEIGHTS_PATH = '../pretrained_models/rcmalli_vggface_tf_notop_vgg16.h5'
     
-    # ============================================================= #
-    
-    # filename = '../data/RAFDB/raw/Image/aligned/test_0001_aligned.jpg'
-    # filename2 = '../data/RAFDB/preprocessed/landmarks/'
-    # im = sk.imread(filename)
-    
-    # xx = keras.applications.VGG16(include_top=(True))
-    # print(len(xx.layers))
-    # xx.summary()
-    
-    # ============================================================= #
-    
-    # tf.config.run_functions_eagerly(True)
-    sys.path.append('../')
-    sys.path.append('../data/RAFDB/raw/Image/aligned/')
-    VGG16_WEIGHTS_PATH = '../pretrained_models/rcmalli_vggface_tf_notop_vgg16.h5'
-    
+    # Dataset directories (images / heatmaps)
     im_dir = '../data/RAFDB/raw/Image/aligned/'
-    im_dir2 = 'data/RAFDB/raw/Image/aligned'
     h_dir = '../data/RAFDB/raw/landmarks/'
     
-    dataset, dataset_test = load_keras_dataset_filepaths(im_dir, h_dir)
-    dataset = dataset.batch(16)
+    # Load dataset filepaths and pass them to the generator
+    train_dataset_partition, test_dataset_partition = load_partition()
+    training_generator = DataGenerator(train_dataset_partition)
     
+    # Create model
     m = PALModel(weights_path = VGG16_WEIGHTS_PATH)     
     
+    # Compilation parameters
+    
+    # # Polynomial decay
+    # learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
+    # starter_learning_rate,
+    # decay_steps,
+    # end_learning_rate,
+    # power=0.5)
     opt = keras.optimizers.Adam(learning_rate = 0.0005)
-    loss_v = keras.losses.CategoricalCrossentropy()
-    m.compile(loss = loss_v, optimizer=opt)
+    loss_fn = keras.losses.CategoricalCrossentropy()
+    
+    m.compile(loss = loss_fn, optimizer=opt)
     
     m.fit(dataset_train)

@@ -47,5 +47,9 @@ opt = keras.optimizers.Adam(learning_rate = 0.0005)
 loss_v = keras.losses.CategoricalCrossentropy()
 m.compile(loss = loss_v, optimizer=opt)
 
-m.fit_generator(training_generator)
-# print(dataset)
+# train
+m.fit(training_generator, epochs = 2,  steps_per_epoch=2)
+
+# path to save model, and then save it
+save_dir = '../pretrained_models/model_sanity_check'
+m.save(save_dir)
