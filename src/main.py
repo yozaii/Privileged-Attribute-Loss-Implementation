@@ -28,8 +28,7 @@ if __name__ == '__main__':
     
     # Create model
     m = PALModel(weights_path = VGG16_WEIGHTS_PATH)     
-    m.load_weights(PAL_MODEL_WEIGHTS_PATH)
-    
+
     # Model compilation params
     opt = keras.optimizers.Adam(learning_rate = 0.0005)
     loss_fn = keras.losses.CategoricalCrossentropy()

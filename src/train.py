@@ -5,7 +5,7 @@ from keras.layers import Layer, Conv2D, MaxPool2D, Flatten, Dense
 from data_utils import *
 
 
-def calc_PAL(attribution, prior_heatmaps, channels):
+def calc_PAL(attribution, heeatmap, channels):
     """
     Privileged attribution loss
     Parameters
@@ -22,6 +22,7 @@ def calc_PAL(attribution, prior_heatmaps, channels):
     None.
 
     """
+
     # batch size
     batch_size = prior_heatmaps.shape[0]
     
@@ -36,18 +37,18 @@ def calc_PAL(attribution, prior_heatmaps, channels):
     total_PAL = 0    
     
     
-    for i in range(prior_heatmaps.shape[0]):
+    for i in range(batch_size):
         
         # resize prior_heatamp to match size of attribution layer
-        prior_heatmap = tf.image.resize(prior_heatmap, attribution[0], attribution[1])
+        heatmap = tf.image.resize(heatmap, attribution[0], attribution[1])
         
         
         for c in range(channels):
             
-            att_c = attribution[:,:,:,c] # attribution of one channel
-            
+            att_c = attribution[:,:,channels] # attribution of one channel
+          
             # cross correlation parameters
-            mu = np.sum(att_c)
+            mu = tf.reduce_sum(att_c, axis = 2)
             sigma_sq = np.sum((att_c - mu) *(att_c-mu))
             sigma = np.sqrt(sigma_sq)
             
@@ -56,12 +57,4 @@ def calc_PAL(attribution, prior_heatmaps, channels):
             pal = -np.sum(conv)
             total_PAL += pal
             
-        return total_PAL
-    
-    
-class CustomCallback(keras.callbacks.Callback):
-    
-
-    def on_epoch_end(self, epoch, logs=None):
-        keys = list(logs.keys())
-        print("End epoch {} of training; got log keys: {}".format(epoch, keys))
+    return total_PAL
