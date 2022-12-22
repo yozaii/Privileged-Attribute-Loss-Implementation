@@ -24,24 +24,22 @@ LANDMARKS_DIRPATH = ('../data/RAFDB/raw/landmarks/')
 
 PARTITION_FILEPATH = ('../data/RAFDB/raw/EmoLabel/list_patition_label.txt')
 
-# ======================================================= #
-# ================ DATA WRITING FUNCTIONS =============== #
-# ======================================================= #
-
-
-# https://www.tensorflow.org/tutorials/load_data/images
-
-
-def download_dataset_to_dir():
-    pass
-
-def save_model_to_dir():
-    pass
-    
 
 # ======================================================= #
 # ================ DATA LOADING UTILS =================== #
 # ======================================================= #
+
+"""
+1: surprise
+2: fear
+3: disgust
+4: happy
+5: sad
+6: anger
+7: neutral
+
+"""
+
 
 def load_partition(filepath = None):
 
@@ -98,7 +96,6 @@ def load_heatmap(filepath, im_h = 112, im_w = 112, sigma = 3):
         
         # Landmark coordinates is set to 1, everything else is 0
         heatmap[x,y] = 1
-        
         
         
     f.close()
@@ -173,91 +170,5 @@ class DataGenerator(keras.utils.Sequence):
             y[i] = self.label[filepath] - 1
 
         return x, h, keras.utils.to_categorical(y, num_classes=self.n_classes)
-
-
-if __name__ == '__main__':
-    
-    
-    sys.path.append('../')
-    
-
-    filename = '../data/RAFDB/raw/landmarks/test_0006_aligned.txt'
-    dirname = '../data/RAFDB/raw/landmarks'
-    
-    
-    # ====================================================== #
-   # # tf.config.run_functions_eagerly(True)
-   # sys.path.append('../')
-   # VGG16_WEIGHTS_PATH = '../pretrained_models/rcmalli_vggface_tf_notop_vgg16.h5'
-
-   # im_dir = '../data/RAFDB/raw/Image/aligned/'
-   # h_dir = '../data/RAFDB/raw/landmarks/'
-
-   # dataset_filepaths = load_dataset_filepaths(im_dir, h_dir)
-
-   # x, h , y = dataset_filepaths
-   # x_train, x_test = x
-   # h_train, h_test = h
-   # y_train, y_test = y
-
-   # # Load training dataset
-   # train_dataset = tf.data.Dataset.from_tensor_slices((x_train, h_train, h_train))
-
-    # ====================================================== #
-    
-    # # start time
-    # start = time.time()
-    
-    # data, y = load_partition()
-    # train_y, test_y = y
-    # train_y = keras.utils.to_categorical(train_y)
-    # test_y = keras.utils.to_categorical(test_y)
-    
-    
-    
-    # img_filenames = list()
-    # heatmap_filenames = list()
-    
-    # for dataname in data:
-    #     img_filenames.append(dataname + '_aligned.jpg')
-    #     heatmap_filenames.append(dataname + '_aligned.txt')
-        
-    # print('after filenames', time.time() - start)
-    
-    # img_dir = '../data/RAFDB/raw/Image/aligned/'
-    # heatmap_dir = '../data/RAFDB/raw/landmarks/'
-      
-
-    # train_h, test_h = load_all_heatmaps(heatmap_dir, heatmap_filenames, 112, 112)
-    # print(time.time() - start)
-    
-    # train_x, test_x = load_all_imgs(img_dir, img_filenames)
-    
-    # print(time.time() - start)
-    # train_x = train_x.astype(np.float32)/255
-    # test_x = train_x.astype(np.float32)/255
-    
-    
-    
-    
-    # # end time
-    # end = time.time()
-    
-    # elapsed = end - start
-    # print(elapsed)
-    
-    # ====================================================== #
-    
-    # filename = '../data/RAFDB/raw/Image/aligned/test_0006_aligned.jpg'
-    # im = sk.imread(filename)
-    # im = img_as_float(im)
-    
-    im_dir = '../data/RAFDB/raw/Image/aligned/'
-    h_dir = '../data/RAFDB/raw/landmarks/'
-    
-    dataset_filepaths = load_dataset_filepaths(im_dir, h_dir)
-    
-    x, y, h = dataset_filepaths
-    print(x[0][1])
 
     

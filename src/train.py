@@ -22,6 +22,8 @@ def calc_PAL(attribution, prior_heatmaps, channels):
     None.
 
     """
+    # batch size
+    batch_size = prior_heatmaps.shape[0]
     
     # width and height of attribution
     width = PAL_layer.shape[1]
@@ -55,3 +57,11 @@ def calc_PAL(attribution, prior_heatmaps, channels):
             total_PAL += pal
             
         return total_PAL
+    
+    
+class CustomCallback(keras.callbacks.Callback):
+    
+
+    def on_epoch_end(self, epoch, logs=None):
+        keys = list(logs.keys())
+        print("End epoch {} of training; got log keys: {}".format(epoch, keys))

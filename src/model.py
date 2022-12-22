@@ -58,8 +58,7 @@ class PALModel(keras.Model):
         # Unpack the data
         x, h, y = data
         
-        # # Separate x into two : x (images) and heatmaps
-        # x, heatmaps = x
+        
         
         with tf.GradientTape() as tape:
             
@@ -68,7 +67,7 @@ class PALModel(keras.Model):
             # f_o = keras.math.abs(self.layers[-1].output)
             
             # Backprop loss (categorical cross entropy in our case)
-            loss_pred = self.l(y, y_pred)
+            loss_pred = self.compiled_loss(y, y_pred)
         
         # # Initialize PAL attribution
         # PAL_layer = self.layers[self.n_PAL_layer].output
@@ -87,19 +86,11 @@ class PALModel(keras.Model):
         gradients = tape.gradient(loss_total, self.trainable_variables)
         
         # Update weights
-        self.opt.apply_gradients(zip(gradients, self.trainable_variables))
+        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         # Update metrics (includes the metric that tracks the loss)
+     
         self.compiled_metrics.update_state(y, y_pred)
         # Return a dict mapping metric names to current value
         
         
         return {m.name: m.result() for m in self.metrics}
-    
-
-
-
-    def compile(self, loss ='categorical_crossentropy', optimizer = 'adam'):
-        
-        super().compile()
-        self.opt = optimizer
-        self.l = loss
