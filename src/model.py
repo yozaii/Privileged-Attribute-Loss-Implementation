@@ -79,8 +79,8 @@ class PALModel(keras.Model):
         # Initialize attribution
         attribution_layer = self.layers[self.n_PAL_layer].output
     
-        # Compute gradients of attribution
-        attribution = x*tape.gradient(f_o_sum, attribution_layer)
+        # # Compute gradients of attribution
+        # attribution = x*tape.gradient(f_o_sum, attribution_layer)
         
         # # Choose channel strategy:
         # if self.channel_strat == 0:

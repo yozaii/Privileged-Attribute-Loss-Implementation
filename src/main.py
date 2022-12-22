@@ -40,16 +40,12 @@ if __name__ == '__main__':
     # callbacks for training
     checkpoint_filepath = '../pretrained_models/PAL_model/checkpoint'
     model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
-    filepath=checkpoint_filepath,
-    save_weights_only=True,
-    monitor='categorical_accuracy',
-    mode='max',
-    save_best_only=True)
+        filepath=checkpoint_filepath,
+        save_weights_only=True,
+        monitor='categorical_accuracy',
+        mode='max',
+        save_best_only=True)
     
     # train
     m.fit(training_generator, epochs = 2, steps_per_epoch=2,
           callbacks=[model_checkpoint_callback])
-
-    # # path to save model, and then save it
-    # save_dir = '../pretrained_models/model_sanity_check'
-    # m.save(save_dir)
